@@ -1,12 +1,18 @@
+from atexit import register
+
 from asyncio import run
 from shutil import rmtree
 from threading import Event
 from threading import Thread
 from time import sleep
-
+from webbrowser import open
+from flask import Flask
+from flask import abort
+from flask import request
 from httpx import RequestError
 from httpx import get
 
+from src.custom import verify_token
 from src.config import Parameter
 from src.config import Settings
 from src.custom import COOKIE_UPDATE_INTERVAL
@@ -28,8 +34,8 @@ from src.custom import (
     DISCLAIMER_TEXT,
     PROJECT_NAME,
 )
-# from src.custom import SERVER_HOST
-# from src.custom import SERVER_PORT
+from src.custom import SERVER_HOST
+from src.custom import SERVER_PORT
 from src.custom import TEXT_REPLACEMENT
 from src.manager import Database
 from src.manager import DownloadRecorder
@@ -42,7 +48,8 @@ from src.tools import ColorfulConsole
 from src.tools import choose
 from src.tools import remove_empty_directories
 from src.tools import safe_pop
-# from .main_api_server import APIServer
+
+from .main_api_server import APIServer
 from .main_complete import TikTok
 
 # from typing import Type
@@ -50,7 +57,7 @@ from .main_complete import TikTok
 # from flask import abort
 # from flask import request
 
-# from .main_server import Server
+from .main_server import Server
 # from .main_web_UI import WebUI
 
 __all__ = ["TikTokDownloader"]
@@ -112,11 +119,11 @@ class TikTokDownloader:
             ("复制粘贴写入 Cookie (TikTok)", self.write_cookie_tiktok),
             ("从浏览器获取 Cookie (TikTok)", self.browser_cookie_tiktok),
             ("终端交互模式", self.complete),
-            ("后台监测模式", self.disable_function),
-            ("Web API 模式", self.disable_function),
-            ("Web UI 模式", self.disable_function),
-            ("服务器部署模式", self.disable_function),
-            # ("Web API 模式", self.__api_object),
+            # ("后台监测模式", self.disable_function),
+            # ("Web API 模式", self.disable_function),
+            # ("Web UI 模式", self.disable_function),
+            # ("服务器部署模式", self.disable_function),
+            ("Web API 模式", self.__api_object),
             # ("Web UI 模式", self.__web_ui_object),
             # ("服务器部署模式", self.__server_object),
             (f"{self.FUNCTION_OPTIONS[self.config["Update"]]
@@ -131,8 +138,8 @@ class TikTokDownloader:
     async def disable_function(self, *args, **kwargs, ):
         self.console.print("该功能正在重构，未来开发完成重新开放！", style=WARNING)
 
-    # def __api_object(self):
-    #     self.server(APIServer, SERVER_HOST)
+    def __api_object(self):
+        self.server(APIServer, SERVER_HOST)
 
     # def __web_ui_object(self):
     #     self.server(WebUI, token=False)
@@ -226,32 +233,31 @@ class TikTokDownloader:
             self.running = False
 
     # @start_cookie_task
-    # def server(
-    #         self,
-    #         server: Type[APIServer | WebUI | Server],
-    #         host="0.0.0.0",
-    #         token=True):
-    #     """
-    #     服务器模式
-    #     """
-    #     self.console.print(
-    #         "如果您看到 WARNING: This is a development server. 提示，这并不是异常错误！\n如需关闭服务器，可以在终端按下 Ctrl + C 快捷键！",
-    #         style=INFO)
-    #     master = server(self.parameter)
-    #     app = master.run_server(Flask("__main__"))
-    #     register(self.recorder.close)
-    #     if token:
-    #         app.before_request(self.verify_token)
-    #     open(f"http://127.0.0.1:{SERVER_PORT}")
-    #     app.run(host=host, port=SERVER_PORT)
+    def server(self, server, host="0.0.0.0", token=True):
+        """
+        服务器模式
+        """
+        self.console.print(
+            "如果您看到 WARNING: This is a development server. 提示，这并不是异常错误！\n如需关闭服务器，可以在终端按下 Ctrl + C 快捷键！",
+            style=INFO,
+        )
+        master = server(self.parameter, self.database)
+        app = master.run_server(Flask("__main__"))
+        # register(self.recorder.close)
+        if token:
+            app.before_request(self.verify_token)
+        # open(f"http://127.0.0.1:{SERVER_PORT}")
+        app.run(host=host, port=SERVER_PORT)
 
-    # @staticmethod
-    # def verify_token():
-    #     if request.method == "POST" and not verify_token(
-    #             request.json.get("token")):
-    #         return abort(403)
+    @staticmethod
+    def verify_token():
+        if request.method == "POST" and not verify_token(request.json.get("token")):
+            return abort(403)
 
-    async def change_config(self, key: str, ):
+    async def change_config(
+        self,
+        key: str,
+    ):
         self.config[key] = 0 if self.config[key] else 1
         await self.database.update_config_data(key, self.config[key])
         self.console.print("修改设置成功！")

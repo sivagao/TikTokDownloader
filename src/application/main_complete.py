@@ -137,7 +137,11 @@ class TikTok:
     }
     ENCODE = "UTF-8-SIG" if system() == "Windows" else "UTF-8"
 
-    def __init__(self, parameter: "Parameter", database: "Database", ):
+    def __init__(
+        self,
+        parameter: "Parameter",
+        database: "Database",
+    ):
         self.default_mode = None
         self.parameter = parameter
         self.database = database

@@ -9,8 +9,8 @@ __all__ = ['APIServer']
 
 
 class APIServer(WebUI):
-    def __init__(self, parameter):
-        super().__init__(parameter)
+    def __init__(self, parameter, database):
+        super().__init__(parameter, database)
 
     def _generate_record_params(self, data: dict, merge=True, **kwargs):
         root, params, logger = self.record.run(self.parameter,
@@ -176,24 +176,28 @@ class APIServer(WebUI):
             }
 
         @app.route("/search/", methods=["POST"])
-        def search():
-            params = self._enter_search_criteria(text=" ".join((
-                request.json.get("keyword"),
-                request.json.get("type", "0"),
-                request.json.get("pages", "1"),
-                request.json.get("sort_type", "0"),
-                request.json.get("publish_time", "0"),
-            )))
+        async def search():
+            params = self._enter_search_criteria(
+                text=" ".join(
+                    (
+                        request.json.get("keyword"),
+                        request.json.get("type", "0"),
+                        request.json.get("pages", "1"),
+                        request.json.get("sort_type", "0"),
+                        request.json.get("publish_time", "0"),
+                    )
+                )
+            )
             if not all(params):
                 return {"data": None, "message": "搜索参数无效！"}
             return {
-                "data": (d := self._deal_search_data(
-                    *params,
-                    source=request.json.get(
-                        "source",
-                        False),
-                    cookie=request.json.get("cookie"),
-                )),
+                "data": (
+                    d := await self._deal_search_data(
+                        *params,
+                        source=request.json.get("source", False),
+                        cookie=request.json.get("cookie"),
+                    )
+                ),
                 "message": "success" if d else "failure",
             }
 
